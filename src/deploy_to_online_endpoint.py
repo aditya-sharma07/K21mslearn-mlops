@@ -32,8 +32,10 @@ def get_ml_client(subscription_id: str, resource_group: str, workspace: str) -> 
 def ensure_endpoint(ml_client: MLClient, endpoint_name: str) -> ManagedOnlineEndpoint:
     try:
         endpoint = ml_client.online_endpoints.get(name=endpoint_name)
+        print(f"Endpoint '{endpoint_name}' already exists")
         return endpoint
-    except Exception:
+    except Exception as e:
+        print(f"Endpoint does not exist, creating new one: {str(e)}")
         unique_suffix = datetime.datetime.now().strftime("%m%d%H%M%f")
         name = endpoint_name or f"endpoint-{unique_suffix}"
 
@@ -43,6 +45,7 @@ def ensure_endpoint(ml_client: MLClient, endpoint_name: str) -> ManagedOnlineEnd
             auth_mode="key",
         )
 
+        print(f"Creating endpoint '{name}'...")
         return ml_client.begin_create_or_update(endpoint).result()
 
 
@@ -51,8 +54,10 @@ def create_or_update_deployment(
     endpoint_name: str,
     deployment_name: str,
 ) -> ManagedOnlineDeployment:
+    # Create a model reference from the local model directory
+    # This should contain MLflow model artifacts and score.py
     model = Model(
-        path="./model",
+        path="./src/model",
         type=AssetTypes.MLFLOW_MODEL,
         description="MLflow diabetes classification model",
     )
@@ -63,12 +68,33 @@ def create_or_update_deployment(
         model=model,
         instance_type="Standard_D2as_v4",
         instance_count=1,
+        # Add environment variables that might be useful
+        environment_variables={
+            "AZUREML_MODEL_DIR": "/var/azureml-app/azureml-models"
+        },
+        # Increase the liveness probe initial delay to give the container more time to start
+        liveness_probe={
+            "failure_threshold": 3,
+            "initial_delay_seconds": 120,  # Increased from default 10
+            "period_seconds": 10,
+            "success_threshold": 1,
+            "timeout_seconds": 2,
+        },
+        readiness_probe={
+            "failure_threshold": 3,
+            "initial_delay_seconds": 60,  # Increased from default 10
+            "period_seconds": 10,
+            "success_threshold": 1,
+            "timeout_seconds": 2,
+        },
     )
 
+    print(f"Creating or updating deployment '{deployment_name}'...")
     return ml_client.online_deployments.begin_create_or_update(deployment).result()
 
 
 def set_traffic_to_deployment(ml_client: MLClient, endpoint_name: str, deployment_name: str) -> None:
+    print(f"Setting traffic to deployment '{deployment_name}'...")
     endpoint = ml_client.online_endpoints.get(name=endpoint_name)
     endpoint.traffic = {deployment_name: 100}
     ml_client.begin_create_or_update(endpoint).result()
