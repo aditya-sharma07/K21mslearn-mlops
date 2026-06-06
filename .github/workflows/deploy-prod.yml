@@ -68,8 +68,8 @@ jobs:
             --subscription-id "${{ steps.detect.outputs.subscription_id }}" \
             --resource-group "${{ steps.detect.outputs.resource_group }}" \
             --workspace "${{ steps.detect.outputs.workspace }}" \
-            --endpoint-name "diabetes-endpoint" \
-            --deployment-name "blue"
+            --endpoint-name "diabetes-endpoint-aditya-0606" \
+            --deployment-name "green"
 
       - name: Comment deployment result on pull request
         uses: actions/github-script@v7
