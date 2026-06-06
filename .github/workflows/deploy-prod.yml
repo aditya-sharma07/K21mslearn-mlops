@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   issues: write
+  pull-requests: write
 
 jobs:
   deploy-prod:
@@ -67,16 +68,18 @@ jobs:
             --subscription-id "${{ steps.detect.outputs.subscription_id }}" \
             --resource-group "${{ steps.detect.outputs.resource_group }}" \
             --workspace "${{ steps.detect.outputs.workspace }}" \
-            --endpoint-name "diabetes-endpoint" \
+            --endpoint-name "diabetes-endpoint-l9f7ce05" \
             --deployment-name "blue"
 
       - name: Comment deployment result on pull request
         uses: actions/github-script@v7
         with:
+          github-token: ${{ github.token }}
           script: |
             const prNumber = context.issue.number;
+
             const body = [
-              '🚀 Deployment workflow completed.',
+              ' Deployment workflow completed.',
               '',
               'The diabetes model has been deployed (or updated) on the managed online endpoint.',
               '',
